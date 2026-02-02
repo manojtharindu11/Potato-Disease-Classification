@@ -56,6 +56,26 @@ jobs:
         run: |
           set -euo pipefail
 
+          sanitize_gcp_name() {
+            # GCP (Cloud Run service / Artifact Registry repo) naming:
+            # - lowercase letters, numbers, hyphens
+            # - start with a letter
+            # - end with a letter or number
+            local raw="$1"
+            local s
+            s="$(echo "$raw" | tr '[:upper:]' '[:lower:]')"
+            s="$(echo "$s" | sed -E 's/[^a-z0-9-]+/-/g')"
+            s="$(echo "$s" | sed -E 's/^-+//; s/-+$//')"
+            # Ensure starts with a letter
+            s="$(echo "$s" | sed -E 's/^[^a-z]+//')"
+            # Ensure ends with alnum
+            s="$(echo "$s" | sed -E 's/[^a-z0-9]+$//')"
+            if [ -z "$s" ]; then
+              s="app"
+            fi
+            echo "$s"
+          }
+
           GCP_PROJECT_ID="$(echo "$SA_KEY_JSON" | jq -r '.project_id')"
 
           if [ -z "${CLOUD_RUN_SERVICE:-}" ]; then
@@ -63,9 +83,13 @@ jobs:
             CLOUD_RUN_SERVICE="${GITHUB_REPOSITORY##*/}"
           fi
 
+          CLOUD_RUN_SERVICE="$(sanitize_gcp_name "$CLOUD_RUN_SERVICE")"
+
           if [ -z "${ARTIFACT_REPOSITORY:-}" ]; then
             ARTIFACT_REPOSITORY="${CLOUD_RUN_SERVICE}-repo"
           fi
+
+          ARTIFACT_REPOSITORY="$(sanitize_gcp_name "$ARTIFACT_REPOSITORY")"
 
           if [ -z "${GCP_PROJECT_ID:-}" ] || [ "$GCP_PROJECT_ID" = "null" ]; then
             echo "::error::Could not determine GCP_PROJECT_ID from GCP_SA_KEY (expected JSON field: project_id)"
