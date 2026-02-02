@@ -107,6 +107,22 @@ jobs:
         with:
           project_id: ${{ env.GCP_PROJECT_ID }}
 
+      - name: Enable required Google Cloud APIs
+        shell: bash
+        run: |
+          set -euo pipefail
+          # These are required for pushing to Artifact Registry and deploying to Cloud Run.
+          # NOTE: This will fail unless the service account has permission to enable services
+          # (e.g. roles/serviceusage.serviceUsageAdmin).
+          gcloud services enable \
+            artifactregistry.googleapis.com \
+            run.googleapis.com \
+            --quiet \
+          || {
+            echo "::error::Failed to enable required APIs. Enable them manually in GCP Console (APIs & Services) or grant the deploy service account 'Service Usage Admin'."
+            exit 1
+          }
+
       - name: Ensure Artifact Registry repository exists
         shell: bash
         run: |
