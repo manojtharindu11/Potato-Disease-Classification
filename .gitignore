@@ -1,2 +1,4 @@
 poteto-disease/
 .venv/
+dataset/
+AugmentedImages/
