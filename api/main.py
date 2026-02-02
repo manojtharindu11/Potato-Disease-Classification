@@ -4,10 +4,13 @@ import numpy as np
 from io import BytesIO
 from PIL import Image
 import tensorflow as tf
+import os
+from pathlib import Path
 
 app = FastAPI()
 
-MODEL = tf.keras.models.load_model("../models/1.keras")
+MODEL_PATH = (Path(__file__).resolve().parent / ".." / "models" / "1.keras").resolve()
+MODEL = tf.keras.models.load_model(str(MODEL_PATH))
 CLASS_NAMES = ["Early Blight", "Late Blight", "Healthy"]
 
 @app.get("/ping")
@@ -33,4 +36,5 @@ def read_file_as_image(data) -> np.ndarray:
     }
  
 if __name__ == "__main__":
-    uvicorn.run(app, host='localhost', port=8080)
+    port = int(os.environ.get("PORT", "8080"))
+    uvicorn.run(app, host="0.0.0.0", port=port)

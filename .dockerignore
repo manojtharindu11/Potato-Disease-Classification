@@ -1,0 +1,21 @@
+# Keep Docker context small (datasets/images are huge)
+.git
+.github
+.venv
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+
+# Data folders
+AugmentedImages/
+dataset/
+poteto-disease/
+
+# Notebooks
+*.ipynb
+
+# OS/editor
+.vscode/
+.DS_Store
+Thumbs.db
