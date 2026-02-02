@@ -9,6 +9,17 @@ on:
       - ".github/workflows/deploy-cloudrun.yml"
       - ".dockerignore"
   workflow_dispatch:
+    inputs:
+      gcp_region:
+        description: "GCP region for Cloud Run (e.g. us-east1)"
+        required: false
+        default: "us-east1"
+      cloud_run_service:
+        description: "Cloud Run service name (defaults to GitHub repo name)"
+        required: false
+      artifact_repository:
+        description: "Artifact Registry repo name (defaults to <service>-repo)"
+        required: false
 
 permissions:
   contents: read
@@ -16,11 +27,13 @@ permissions:
   # Keep it off when using a service account key JSON.
 
 env:
-  # Set these in GitHub repo Variables (Settings -> Secrets and variables -> Actions -> Variables)
-  GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
-  GCP_REGION: ${{ vars.GCP_REGION }}
-  CLOUD_RUN_SERVICE: ${{ vars.CLOUD_RUN_SERVICE }}
-  ARTIFACT_REPOSITORY: ${{ vars.ARTIFACT_REPOSITORY }}
+  # No GitHub Variables required.
+  # - Project ID is inferred from the service account key JSON.
+  # - Service/repository are derived unless provided as workflow_dispatch inputs.
+  GCP_PROJECT_ID: ""
+  GCP_REGION: ${{ github.event.inputs.gcp_region || 'us-east1' }}
+  CLOUD_RUN_SERVICE: ${{ github.event.inputs.cloud_run_service || '' }}
+  ARTIFACT_REPOSITORY: ${{ github.event.inputs.artifact_repository || '' }}
 
 jobs:
   deploy:
@@ -36,10 +49,53 @@ jobs:
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
 
+      - name: Derive deployment settings
+        shell: bash
+        env:
+          SA_KEY_JSON: ${{ secrets.GCP_SA_KEY }}
+        run: |
+          set -euo pipefail
+
+          GCP_PROJECT_ID="$(echo "$SA_KEY_JSON" | jq -r '.project_id')"
+
+          if [ -z "${CLOUD_RUN_SERVICE:-}" ]; then
+            # github.repository is "owner/name"; we want "name"
+            CLOUD_RUN_SERVICE="${GITHUB_REPOSITORY##*/}"
+          fi
+
+          if [ -z "${ARTIFACT_REPOSITORY:-}" ]; then
+            ARTIFACT_REPOSITORY="${CLOUD_RUN_SERVICE}-repo"
+          fi
+
+          if [ -z "${GCP_PROJECT_ID:-}" ] || [ "$GCP_PROJECT_ID" = "null" ]; then
+            echo "::error::Could not determine GCP_PROJECT_ID from GCP_SA_KEY (expected JSON field: project_id)"
+            exit 1
+          fi
+
+          echo "GCP_PROJECT_ID=$GCP_PROJECT_ID" >> "$GITHUB_ENV"
+          echo "CLOUD_RUN_SERVICE=$CLOUD_RUN_SERVICE" >> "$GITHUB_ENV"
+          echo "ARTIFACT_REPOSITORY=$ARTIFACT_REPOSITORY" >> "$GITHUB_ENV"
+
+          echo "Using project=${GCP_PROJECT_ID}, region=${GCP_REGION}, service=${CLOUD_RUN_SERVICE}, repo=${ARTIFACT_REPOSITORY}"
+
       - name: Set up gcloud
         uses: google-github-actions/setup-gcloud@v2
         with:
           project_id: ${{ env.GCP_PROJECT_ID }}
+
+      - name: Ensure Artifact Registry repository exists
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gcloud artifacts repositories describe "${ARTIFACT_REPOSITORY}" --location "${GCP_REGION}" >/dev/null 2>&1; then
+            echo "Artifact Registry repo exists: ${ARTIFACT_REPOSITORY}"
+          else
+            echo "Creating Artifact Registry repo: ${ARTIFACT_REPOSITORY}"
+            gcloud artifacts repositories create "${ARTIFACT_REPOSITORY}" \
+              --repository-format=docker \
+              --location "${GCP_REGION}" \
+              --description "Docker images for ${CLOUD_RUN_SERVICE}"
+          fi
 
       - name: Configure Docker for Artifact Registry
         run: gcloud auth configure-docker ${{ env.GCP_REGION }}-docker.pkg.dev --quiet
