@@ -3,3 +3,14 @@ poteto-disease/
 dataset/
 AugmentedImages/
 .env
+
+# Google Cloud SDK local config / credentials (do not commit)
+.config/gcloud/
+**/.config/gcloud/
+**/gcloud/
+**/.gcloud/
+
+# Common cloud credential key filenames (do not commit)
+*service-account*.json
+*gcp*.json
+*google*credentials*.json

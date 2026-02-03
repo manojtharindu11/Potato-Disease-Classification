@@ -1,4 +1,4 @@
-# Cloud Run container for FastAPI + TensorFlow model inference
+# FastAPI + TensorFlow model inference container
 # Using the official TensorFlow image avoids manylinux / system-lib headaches.
 FROM tensorflow/tensorflow:2.20.0
 
@@ -19,7 +19,7 @@ RUN pip install --no-cache-dir -r /app/api/requirements.txt
 COPY api /app/api
 COPY models /app/models
 
-# Cloud Run sets $PORT; default is usually 8080
+# Most platforms expose port 8080; we also respect $PORT if provided.
 EXPOSE 8080
 
 CMD ["bash", "-lc", "uvicorn api.main:app --host 0.0.0.0 --port ${PORT:-8080}"]
