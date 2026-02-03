@@ -19,6 +19,11 @@ RUN pip install --no-cache-dir -r /app/api/requirements.txt
 COPY api /app/api
 COPY models /app/models
 
+# Patch Keras model config for runtime compatibility (removes unsupported keys
+# like `quantization_config` that can break loading across Keras versions).
+RUN python /app/api/patch_keras_model.py /app/models/1.keras || true
+RUN python /app/api/patch_keras_model.py /app/models/2.keras || true
+
 # Most platforms expose port 8080; we also respect $PORT if provided.
 EXPOSE 8080
 
