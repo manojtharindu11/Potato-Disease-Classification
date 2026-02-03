@@ -13,7 +13,7 @@ Ping: `http://localhost:8080/ping`
 
 This repo includes a `fly.toml` that builds from `api/Dockerfile`.
 
-1) Install Fly CLI: `flyctl` (Fly.io docs)
-2) Login: `fly auth login`
-3) Set your app name in `fly.toml` (the `app = "..."` line)
-4) Deploy from repo root: `fly deploy`
+1. Install Fly CLI: `flyctl` (Fly.io docs)
+2. Login: `fly auth login`
+3. Set your app name in `fly.toml` (the `app = "..."` line)
+4. Deploy from repo root: `fly deploy`
