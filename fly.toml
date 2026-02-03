@@ -1,0 +1,26 @@
+# Fly.io app configuration
+#
+# 1) Set a unique app name (must be globally unique on Fly):
+#      fly apps create <your-app-name>
+#    or edit the `app = "..."` value below.
+# 2) Deploy from repo root:
+#      fly deploy
+
+app = "potato-disease-api"
+primary_region = "iad"
+
+[build]
+  dockerfile = "api/Dockerfile"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_start_machines = true
+  auto_stop_machines = "stop"
+  min_machines_running = 0
+  processes = ["app"]
+
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 1
+  memory = "2048mb"
