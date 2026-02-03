@@ -9,6 +9,14 @@ From the repo root:
 
 Ping: `http://localhost:8080/ping`
 
+## Run Streamlit UI locally
+
+- Install deps: `pip install -r requirements.txt`
+- Point UI at API (choose one):
+  - Local: set `POTATO_API_URL=http://localhost:8080`
+  - Fly: set `POTATO_API_URL=https://potato-disease-classification.fly.dev`
+- Run: `streamlit run ui/app.py`
+
 ## Deploy API to Fly.io
 
 This repo includes a `fly.toml` that builds from `api/Dockerfile`.

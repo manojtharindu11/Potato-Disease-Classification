@@ -25,20 +25,41 @@ class DenseCompat(tf.keras.layers.Dense):
 
 
 def _load_model_compat(model_path: Path) -> tf.keras.Model:
+    base_kwargs = {"compile": False}
+    compat_kwargs = {
+        **base_kwargs,
+        "custom_objects": {
+            "Dense": DenseCompat,
+            "keras.layers.Dense": DenseCompat,
+        },
+    }
+
+    last_exc: Exception | None = None
+
+    # First try a normal load (fast path).
     try:
-        return tf.keras.models.load_model(str(model_path))
+        return tf.keras.models.load_model(str(model_path), **base_kwargs)
+    except Exception as exc:
+        last_exc = exc
+
+    # Retry with a Dense compat override. Some saved models include
+    # `quantization_config` in Dense config which older runtimes reject.
+    try:
+        return tf.keras.models.load_model(str(model_path), **compat_kwargs)
+    except Exception as exc:
+        last_exc = exc
+
+    # If this Keras version supports safe_mode, disable it and retry.
+    try:
+        return tf.keras.models.load_model(str(model_path), safe_mode=False, **compat_kwargs)
     except TypeError as exc:
-        # Seen when a model was saved with a different Keras version that
-        # includes `quantization_config` in Dense config.
-        if "quantization_config" in str(exc):
-            return tf.keras.models.load_model(
-                str(model_path),
-                custom_objects={
-                    "Dense": DenseCompat,
-                    "keras.layers.Dense": DenseCompat,
-                },
-            )
-        raise
+        # safe_mode not supported in this environment
+        last_exc = exc
+    except Exception as exc:
+        last_exc = exc
+
+    assert last_exc is not None
+    raise last_exc
 
 
 def get_model() -> tf.keras.Model | None:
@@ -58,10 +79,7 @@ def get_model() -> tf.keras.Model | None:
         return _MODEL
 
 
-@app.on_event("startup")
-def _startup_load_model() -> None:
-    # Attempt once at startup, but don't fail the app if it can't load.
-    get_model()
+
 
 @app.get("/ping")
 async def ping():

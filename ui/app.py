@@ -5,7 +5,20 @@ import requests
 import streamlit as st
 
 
-DEFAULT_API_URL = os.environ.get("POTATO_API_URL", "http://localhost:8080")
+DEFAULT_API_URL = os.environ.get(
+    "POTATO_API_URL",
+    "https://potato-disease-classification.fly.dev",
+)
+
+
+def _ping_api(api_base_url: str) -> tuple[bool, str]:
+    api_base_url = api_base_url.rstrip("/")
+    try:
+        r = requests.get(f"{api_base_url}/ping", timeout=10)
+        r.raise_for_status()
+        return True, r.text
+    except requests.exceptions.RequestException as exc:
+        return False, str(exc)
 
 
 def _predict_via_api(api_base_url: str, filename: str, file_bytes: bytes) -> dict:
@@ -32,8 +45,20 @@ st.caption("Drag & drop an image to predict: Early Blight / Late Blight / Health
 
 with st.sidebar:
     st.subheader("Settings")
-    api_url = st.text_input("API base URL", value=DEFAULT_API_URL, help="Example: http://localhost:8080")
+    api_url = st.text_input(
+        "API base URL",
+        value=DEFAULT_API_URL,
+        help="Examples: http://localhost:8080 or https://potato-disease-classification.fly.dev",
+    )
     show_raw = st.checkbox("Show raw response", value=False)
+
+    if st.button("Test API", use_container_width=True):
+        ok, detail = _ping_api(api_url)
+        if ok:
+            st.success("API reachable")
+        else:
+            st.error("API not reachable")
+        st.caption(detail)
 
 st.markdown("---")
 
