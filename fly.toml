@@ -6,11 +6,11 @@
 # 2) Deploy from repo root:
 #      fly deploy
 
-app = "potato-disease-api"
+app = "potato-disease-classification"
 primary_region = "iad"
 
 [build]
-  dockerfile = "api/Dockerfile"
+  dockerfile = "Dockerfile"
 
 [http_service]
   internal_port = 8080
